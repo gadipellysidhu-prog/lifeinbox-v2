@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lifeinbox-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-lifeinbox}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-lifeinbox}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: lifeinbox-mailhog
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lifeinbox-backend
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-lifeinbox}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      SERVER_PORT: 8080
+      SERVER_ADDRESS: 0.0.0.0
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-LifeInbox <onboarding@resend.dev>}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
+      MAIL_HOST: ${MAIL_HOST:-mailhog}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@lifeinbox.local}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-LifeInbox}
+      MAIL_PROTOCOL: ${MAIL_PROTOCOL:-smtp}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_SMTP_STARTTLS_REQUIRED: ${MAIL_SMTP_STARTTLS_REQUIRED:-false}
+      MAIL_SSL_TRUST: ${MAIL_SSL_TRUST:-*}
+      LIFEINBOX_PUSH_ENABLED: ${LIFEINBOX_PUSH_ENABLED:-false}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@lifeinbox.local}
+      LIFEINBOX_PUSH_RETRY_ENABLED: ${LIFEINBOX_PUSH_RETRY_ENABLED:-true}
+      LIFEINBOX_PUSH_RETRY_MAX_ATTEMPTS: ${LIFEINBOX_PUSH_RETRY_MAX_ATTEMPTS:-3}
+      LIFEINBOX_PUSH_RETRY_INITIAL_BACKOFF_MS: ${LIFEINBOX_PUSH_RETRY_INITIAL_BACKOFF_MS:-1000}
+      LIFEINBOX_PUSH_RETRY_MAX_BACKOFF_MS: ${LIFEINBOX_PUSH_RETRY_MAX_BACKOFF_MS:-10000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lifeinbox-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:80/sw.js || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    driver: local

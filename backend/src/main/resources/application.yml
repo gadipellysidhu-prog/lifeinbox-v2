@@ -1,0 +1,77 @@
+server:
+  address: 0.0.0.0
+  port: ${PORT:${SERVER_PORT:8080}}
+spring:
+  application:
+    name: life-inbox-backend
+  config:
+    import:
+      - "optional:file:.env[.properties]"
+      - "optional:file:../.env[.properties]"
+  profiles:
+    active: dev
+  jpa:
+    open-in-view: false
+  jackson:
+    time-zone: UTC
+    date-format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: ${MAIL_PROTOCOL:smtp}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+            required: ${MAIL_SMTP_STARTTLS_REQUIRED:false}
+          ssl:
+            trust: ${MAIL_SSL_TRUST:*}
+
+# Application JWT Configuration
+app:
+  jwt:
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours
+
+# LifeInbox Email and Scheduler Configuration
+lifeinbox:
+  app-base-url: ${APP_BASE_URL:http://localhost:5173}
+  mail:
+    provider: ${EMAIL_PROVIDER:resend}
+    from-email: ${MAIL_FROM:no-reply@lifeinbox.local}
+    from-name: ${MAIL_FROM_NAME:LifeInbox}
+    max-retries: ${EMAIL_MAX_RETRIES:3}
+    retry-backoff-seconds: ${EMAIL_RETRY_BACKOFF_SECONDS:60}
+  resend:
+    api-key: ${RESEND_API_KEY:}
+    from-email: ${RESEND_FROM_EMAIL:LifeInbox <onboarding@resend.dev>}
+    api-url: ${RESEND_API_URL:https://api.resend.com/emails}
+  scheduler:
+    reminder-interval-ms: ${LIFEINBOX_SCHEDULER_REMINDER_INTERVAL_MS:15000}
+    digest-interval-ms: ${LIFEINBOX_SCHEDULER_DIGEST_INTERVAL_MS:60000}
+  push:
+    enabled: ${LIFEINBOX_PUSH_ENABLED:false}
+    vapid-public-key: ${VAPID_PUBLIC_KEY:}
+    vapid-private-key: ${VAPID_PRIVATE_KEY:}
+    vapid-subject: ${VAPID_SUBJECT:mailto:admin@lifeinbox.local}
+    retry:
+      enabled: ${LIFEINBOX_PUSH_RETRY_ENABLED:true}
+      max-attempts: ${LIFEINBOX_PUSH_RETRY_MAX_ATTEMPTS:3}
+      initial-backoff-ms: ${LIFEINBOX_PUSH_RETRY_INITIAL_BACKOFF_MS:1000}
+      max-backoff-ms: ${LIFEINBOX_PUSH_RETRY_MAX_BACKOFF_MS:10000}
+
+# SpringDoc OpenAPI configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
